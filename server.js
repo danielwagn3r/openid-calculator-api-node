@@ -2,9 +2,14 @@ const express = require('express');
 const cors = require('cors');
 const app = express();
 app.use(cors());
-const jwt = require('express-jwt');
+var { expressjwt: jwt } = require("express-jwt");
 const jwksRsa = require('jwks-rsa');
-const jwtAuthz = require('express-jwt-authz');
+var guard = require('express-jwt-permissions')(
+  {
+    requestProperty: 'auth',
+    permissionsProperty: 'scope'
+  }
+)
 const jsonwebtoken = require('jsonwebtoken');
 const { check, validationResult } = require('express-validator');
 
@@ -41,10 +46,10 @@ const checkJwt = jwt({
   algorithms: ['RS256']
 });
 
-const doubleScope = jwtAuthz(['calc:double']);
-const squareScope = jwtAuthz(['calc:square']);
+const doubleScope = guard.check(['calc:double']);
+const squareScope = guard.check(['calc:square']);
 
-app.get('/api/double/:number', checkJwt, doubleScope, [check('number').isInt()], function (req, res) {
+app.get('/double/:number', checkJwt, doubleScope, [check('number').isInt()], function (req, res) {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     return res.status(422).json({ errors: errors.array() });
@@ -55,7 +60,7 @@ app.get('/api/double/:number', checkJwt, doubleScope, [check('number').isInt()],
   res.json({ result: double });
 });
 
-app.get('/api/square/:number', checkJwt, squareScope, function (req, res) {
+app.get('/square/:number', checkJwt, squareScope, function (req, res) {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     return res.status(422).json({ errors: errors.array() });
@@ -66,11 +71,11 @@ app.get('/api/square/:number', checkJwt, squareScope, function (req, res) {
   res.json({ result: square });
 });
 
-app.get('/api/tokeninfo', checkJwt, function (req, res) {
+app.get('/identity', checkJwt, function (req, res) {
   var decoded = jsonwebtoken.decode(req.headers.authorization.split(' ')[1]);
   res.status(200).send(decoded);
 });
 
-app.listen(5001, function () {
+app.listen(6001, function () {
   console.log('Listening...');
 });
